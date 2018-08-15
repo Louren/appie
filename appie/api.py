@@ -17,14 +17,27 @@ class Api(object):
         self.login(username, password)
 
     def login(self, username, password):
-        url = 'https://www.ah.nl/mijn/inloggen/basis'
-
+        # Turns out this logon works but doesn't return personal shopping lists
+        '''
+        url = 'https://www.ah.nl/mijn/api/login'
         payload = {
-            'userName': username,
+            'username': username,
             'password': password
         }
-
-        response = requests.post(url, data=payload)
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+        self._cookies = response.cookies
+        '''
+        # This login does
+        url = 'https://www.ah.nl/service/loyalty/rest/tokens'
+        payload = {
+            'username': username,
+            'password': password,
+            'type':    "password",
+            'domain':   "NLD"
+        }
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
         self._cookies = response.cookies
 
     def add(self, product_id, quantity=1):
@@ -37,18 +50,20 @@ class Api(object):
             'originCode': "PSE"
         }
 
-        url = 'http://www.ah.nl/service/rest/shoppinglists/%d/items' % self._shoppinglist
+        url = 'https://www.ah.nl/service/rest/shoppinglists/%d/items' % self._shoppinglist
         response = requests.post(url, cookies=self._cookies, json=payload)
+        self._cookies = response.cookies
         if response.status_code == 200:
             return True
         else:
             return False
 
     def _update_list(self):
-        url = 'http://www.ah.nl/service/rest/shoppinglists/0/'
-        response = requests.get(url, cookies=self._cookies, json=payload)
-
+        url = 'https://www.ah.nl/service/rest/shoppinglists/%d/' % self._shoppinglist
+        response = requests.get(url, cookies=self._cookies)
+        self._cookies = response.cookies
         self._list = response.json()
+        
         return self._list
 
     @property
